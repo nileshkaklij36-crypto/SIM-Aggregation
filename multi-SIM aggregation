@@ -1,0 +1,74 @@
+- name: Configure multi-SIM aggregation/load balancing
+  hosts: routers
+  become: yes
+  tasks:
+    - name: Ensure mwan3 is installed
+      opkg:
+        name: mwan3
+        state: present
+ 
+    - name: Configure interfaces
+      copy:
+        dest: /etc/config/network
+        content: |
+          config interface 'sim1'
+            option proto 'dhcp'
+            option ifname 'wwan0'
+          config interface 'sim2'
+            option proto 'dhcp'
+            option ifname 'wwan1'
+          config interface 'sim3'
+            option proto 'dhcp'
+            option ifname 'wwan2'
+          config interface 'sim4'
+            option proto 'dhcp'
+            option ifname 'wwan3'
+          config interface 'sim5'
+            option proto 'dhcp'
+            option ifname 'wwan4'
+      notify: Restart network
+ 
+    - name: Configure mwan3 load balancing
+      copy:
+        dest: /etc/config/mwan3
+        content: |
+          config interface 'sim1'
+            option enabled '1'
+            option reliability '1'
+            option family 'ipv4'
+          config interface 'sim2'
+            option enabled '1'
+            option reliability '1'
+            option family 'ipv4'
+          config interface 'sim3'
+            option enabled '1'
+            option reliability '1'
+            option family 'ipv4'
+          config interface 'sim4'
+            option enabled '1'
+            option reliability '1'
+            option family 'ipv4'
+          config interface 'sim5'
+            option enabled '1'
+            option reliability '1'
+            option family 'ipv4'
+ 
+          config member 'balanced'
+            option interface 'sim1 sim2 sim3 sim4 sim5'
+            option metric '10'
+            option weight '1'
+ 
+          config policy 'balanced'
+            list use_member 'balanced'
+ 
+          config rule 'all_traffic'
+            option dest_ip '0.0.0.0/0'
+            option use_policy 'balanced'
+      notify: Restart mwan3
+ 
+  handlers:
+    - name: Restart network
+      command: /etc/init.d/network restart
+ 
+    - name: Restart mwan3
+      command: /etc/init.d/mwan3 restart
